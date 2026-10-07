@@ -1,0 +1,68 @@
+def simular_jornada(individuo, jornada):
+
+    # 5 ventanillas: guardamos el minuto en que acaba su atención (None = libre)
+    fin_atencion = [None, None, None, None, None]
+
+    # cola de clientes esperando (guardamos su hora de llegada)
+    cola = []
+
+    # acumuladores de la jornada
+    espera = 0
+    inactividad = 0
+
+    # instante actual, franja actual y próximo cliente por llegar
+    t = 0
+    franja = 0
+    siguiente = 0
+
+    while True:
+
+        # posibles próximos eventos: fines de atención, llegadas y cambio de franja
+        eventos = []
+        for fin in fin_atencion:
+            if fin is not None:
+                eventos.append(fin)
+        if siguiente < len(jornada):
+            eventos.append(jornada[siguiente])
+        if franja < 14:
+            eventos.append((franja + 1) * 60)
+
+        # si ya no queda nada por ocurrir, termina la jornada
+        if len(eventos) == 0:
+            break
+
+        # avanzamos al evento más cercano
+        t_evento = min(eventos)
+
+        # ventanillas abiertas que han estado libres hasta ese evento
+        abiertas = individuo[franja]
+        libres = fin_atencion[:abiertas].count(None)
+
+        # sumamos su inactividad (solo cuenta hasta las 22:00, minuto 900)
+        inactividad = inactividad + (min(t_evento, 900) - min(t, 900)) * libres
+
+        t = t_evento
+
+        # 1º terminan las atenciones
+        for v in range(5):
+            if fin_atencion[v] == t:
+                fin_atencion[v] = None
+
+        # 2º cambiamos de franja
+        if franja < 14 and t == (franja + 1) * 60:
+            franja = franja + 1
+
+        # 3º entran en la cola los clientes que llegan ahora
+        while siguiente < len(jornada) and jornada[siguiente] == t:
+            cola.append(jornada[siguiente])
+            siguiente = siguiente + 1
+
+        # atendemos la cola en las ventanillas abiertas y libres, de menor a mayor número
+        abiertas = individuo[franja]
+        for v in range(abiertas):
+            if len(cola) > 0 and fin_atencion[v] is None:
+                llegada = cola.pop(0)
+                espera = espera + (t - llegada)
+                fin_atencion[v] = t + 10
+
+    return espera, inactividad
